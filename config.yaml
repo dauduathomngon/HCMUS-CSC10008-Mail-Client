@@ -1,0 +1,29 @@
+General: 
+  Username: Le Nguyen <ln@testing.com>
+  Password: ahihi
+  MailServer: 192.168.1.10
+  SMTP: 3333
+  POP3: 4444
+  Autoload: 10
+
+Filter:
+  - From:
+    - ahihi@testing.com
+    - ahuu@testing.com
+    To: Project
+
+  - Subject: 
+    - "urgent"
+    - "ASAP"
+    To: Important
+
+  - Content:
+    - "report"
+    - "meeting"
+    To: Work
+
+  - Spam:
+    - "virus"
+    - "hack"
+    - "crack"
+    To: Spam
