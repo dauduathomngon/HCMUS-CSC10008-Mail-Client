@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 pyyaml = "*"
 icecream = "*"
+pillow = "*"
+rich = "*"
+tk = "*"
 
 [dev-packages]
 

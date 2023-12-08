@@ -1,9 +1,9 @@
 General: 
-  Username: Le Nguyen <ln@testing.com>
-  Password: ahihi
-  MailServer: 192.168.1.10
-  SMTP: 3333
-  POP3: 4444
+  Username: Le Nguyen <lntesting1807@gmail.com>
+  Password: 123456789
+  MailServer: 127.0.0.1
+  SMTP: 2225
+  POP3: 3335
   Autoload: 10
 
 Filter:
