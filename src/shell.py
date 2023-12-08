@@ -128,7 +128,7 @@ class Shell(Cmd):
                     # chọn lại file
                     new_files = list(filedialog.askopenfilenames(parent=DEFAULT.ROOT))
                     attachments += new_files
-            DEFAULT.CONSOLE.print("[green]File đính kèm:[/green]")
+            DEFAULT.CONSOLE.print("[cyan]File đính kèm:[/cyan]")
             for file in attachments:
                 DEFAULT.CONSOLE.print(f"\t{os.path.basename(file)}")
 
