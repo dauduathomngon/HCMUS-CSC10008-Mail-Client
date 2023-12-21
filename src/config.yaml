@@ -1,0 +1,29 @@
+General: 
+  Username: Le Nguyen <lntesting1807@gmail.com>
+  Password: 123456789
+  MailServer: 127.0.0.1
+  SMTP: 2225
+  POP3: 3335
+  Autoload: 10
+
+Filter:
+  - From:
+    - ahihi@testing.com
+    - ahuu@testing.com
+    To: Project
+
+  - Subject: 
+    - "urgent"
+    - "ASAP"
+    To: Important
+
+  - Content:
+    - "report"
+    - "meeting"
+    To: Work
+
+  - Spam:
+    - "virus"
+    - "hack"
+    - "crack"
+    To: Spam

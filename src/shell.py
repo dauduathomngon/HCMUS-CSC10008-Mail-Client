@@ -1,13 +1,15 @@
 import os
 from cmd import Cmd
 from tkinter import filedialog
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+from email.utils import make_msgid
+from email.mime.multipart import MIMEMultipart
 
 from smtp import SMTP
+from pop3 import POP3
 from utils import *
 
-DEFAULT.ROOT.withdraw()
+ROOT.withdraw()
 
 class Shell(Cmd):
     def __init__(self, config_path) -> None:
@@ -17,123 +19,120 @@ class Shell(Cmd):
         self.general_config = process_general(read_config(config_path)["General"])
         self.filter_config = read_config(config_path)["Filter"]
 
-        # tạo smtp connection
+        # kết nối smtp
+        self.__connect_smtp()
+
+    def __connect_smtp(self):
+        # tạo smtp 
         self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"])
-
-        if not self.smtp.create_connection():
-            DEFAULT.CONSOLE.print(f"[red]ERROR:[/red] Không thể kết nối đến Server: {self.general_config['MailServer'], self.general_config['SMTP']}")
-            self.__close()
-            raise Exception()
-
+        # sau đó connect với server
+        self.smtp.connect()
+        # gửi command helo
+        self.smtp.helo()
+                
     def __close(self):
-        self.smtp.close()
+        if self.smtp:
+            self.smtp.close()
 
+    # thoát shell
     def do_exit(self, arg):
-        """
-        Thoát shell
-        """
         self.__close()
         return True
 
+    # clear màn hình
     def do_clear(self, arg):
-        """ 
-        Clear màn hình
-        """
         os.system("cls")
 
+    # xuất ra thông tin help
     def do_help(self, arg):
-        """
-        Xuất ra thông tin help
-        """
         pass
 
+    # liệt kê ra các mail trong mail box
     def do_ls(self, arg):
-        """
-        Liệt kê những folder chứa hộp thư
-        """
         pass
 
-    def do_setdebug(self, arg):
-        if arg == "-t":
-            self.smtp.debug = True
-        elif arg == "-f":
-            self.smtp.debug = False
-
+    # thực hiện việc gửi mail
     def do_sendmail(self, arg):
-        """
-        Thực hiện việc gửi mail
-        """
-        # nhập mail
-        to = DEFAULT.PROMPT.ask("[cyan]Đến[/cyan]")
-        if to == "":
-            DEFAULT.CONSOLE.print("[red]ERROR[/red]: Không thể để trống mail nhận")
-            return
-        if not check_mail_format(to):
-            DEFAULT.CONSOLE.print("[red]ERROR[/red]: Định dạng mail không hợp lê")
-            return
+        # tách các argument ra
+        arg_list = arg.split(" ")
 
-        cc = DEFAULT.PROMPT.ask("[cyan]CC[/cyan]")
-        if not check_mail_format(to):
-            DEFAULT.CONSOLE.print("[red]ERROR[/red]: Định dạng mail không hợp lê")
-            return
-
-        bcc = DEFAULT.PROMPT.ask("[cyan]BCC[/cyan]")
-        if not check_mail_format(to):
-            DEFAULT.CONSOLE.print("[red]ERROR[/red]: Định dạng mail không hợp lê")
-            return
-
-        subject = DEFAULT.PROMPT.ask("[cyan]Tiêu đề[/cyan]")
-        if subject == "":
-            DEFAULT.CONSOLE.print("[red]ERROR[/red]: Không thể để trống tiêu đề")
-            return
-
-        content = DEFAULT.PROMPT.ask("[cyan]Nội dung[/cyan]")
-
+        # tạo mail
         mail = MIMEMultipart()
 
-        # tạo người gửi và nơi nhận mail
+        # tạo người gửi
         mail["From"] = self.general_config["Mail"]
+
+        # nhập mail nhận
+        to = PROMPT.ask("[cyan]Đến[/cyan]")
+        if to == "":
+            CONSOLE.print("[red](ERROR)[/red] Không thể để trống mail nhận")
+            return
+        if not check_mail_format(to):
+            CONSOLE.print("[red](ERROR)[/red] Định dạng mail không hợp lệ")
+            return
         mail["To"] = to
 
-        if cc != "":
+        # tạo cc (nếu có)
+        if "-cc" in arg_list:
+            cc = PROMPT.ask("[cyan]CC[/cyan]")
+            if not check_mail_format(to):
+                CONSOLE.print("[red](ERROR)[/red] Định dạng mail không hợp lệ")
+                return
             mail["CC"] = cc
-        if bcc != "":
+
+        # tạo bcc (nếu có)
+        if "-bcc" in arg_list:
+            bcc = PROMPT.ask("[cyan]BCC[/cyan]")
+            if not check_mail_format(to):
+                CONSOLE.print("[red](ERROR)[/red] Định dạng mail không hợp lệ")
+                return
             mail["BCC"] = bcc
 
-        # tạo tiêu đề
+        subject = PROMPT.ask("[cyan]Tiêu đề[/cyan]")
+        if subject == "":
+            CONSOLE.print("[red](ERROR)[/red] Không thể để trống tiêu đề")
+            return
         mail["Subject"] = subject
 
         # tạo ngày gửi
         mail["Date"] = datetime.now().strftime("%a, %d %b %Y %H:%M:%S")
 
         # tạo nội dung
-        content_part = MIMEText(content,
-                                _subtype="plain",
-                                _charset="UTF-8")
-        mail.attach(content_part)
+        content = PROMPT.ask("[cyan]Nội dung[/cyan]")
+        mail.attach(MIMEText(content, _subtype = "plain"))
 
         # tạo các file đính kèm
-        if arg == "-a":
-            attachments = list(filedialog.askopenfilenames(parent=DEFAULT.ROOT))
+        if "-a" in arg_list:
+            attachments = list(filedialog.askopenfilenames(parent=ROOT))
+
             # số lượng file không được lớn hơn 5
             if len(attachments) > 5:
-                DEFAULT.CONSOLE.print("[red]ERROR[/red]: Không thể gửi nhiều hơn 5 file")
+                CONSOLE.print("[red](ERROR)[/red] Không thể gửi nhiều hơn 5 file")
                 return 
+
             # file không thể vượt quá 5MB
             for file in attachments:
                 # đưa bytes về megabytes
                 if int(os.stat(file).st_size / float(1 << 20)) > 5:
-                    DEFAULT.CONSOLE.print("[red]ERROR[/red]: Không thể gửi file lớn hơn 5MB. Vui lòng chọn lại file")
+                    CONSOLE.print("[red](ERROR)[/red] Không thể gửi file lớn hơn 5MB. Vui lòng chọn lại file")
                     attachments.remove(file)
                     # chọn lại file
-                    new_files = list(filedialog.askopenfilenames(parent=DEFAULT.ROOT))
+                    new_files = list(filedialog.askopenfilenames(parent=ROOT))
                     attachments += new_files
-            DEFAULT.CONSOLE.print("[cyan]File đính kèm:[/cyan]")
-            for file in attachments:
-                DEFAULT.CONSOLE.print(f"\t{os.path.basename(file)}")
 
+            # in ra những file được đính kèm
+            CONSOLE.print("[cyan]File đính kèm[/cyan]")
+            for file in attachments:
+                CONSOLE.print(f"\t{os.path.basename(file)}")
+
+            # đính kèm file vào mail
             for file in attachments:
                 mail.attach(create_file_format(file))
 
+        # tạo message ID
+        mail["Message-ID"] = make_msgid()
+
         # tiến hành gửi mail
-        self.smtp.send(mail)
+        self.smtp.sendmail(mail)
+
+        CONSOLE.print(f"[green](SUCCESS)[/green] Đã gửi thành công mail")

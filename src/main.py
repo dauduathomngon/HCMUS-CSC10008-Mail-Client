@@ -1,9 +1,9 @@
-from rich import traceback
 from shell import Shell
 from utils import *
 
-traceback.install()
-
 if __name__ == "__main__":
-    app = Shell(DEFAULT.CONFIG_FILE)
-    app.cmdloop()
+    try:
+        s = Shell(CONFIG_FILE)
+        s.cmdloop()
+    except:
+        CONSOLE.print_exception()
