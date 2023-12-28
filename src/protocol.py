@@ -29,6 +29,10 @@ class Protocol:
         """
         Thực hiện kết nối với server
         """
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.settimeout(TIMEOUT)
+
         try:
             if self.debug:
                 CONSOLE.print("Tiến hành kết nối đến Server...")
@@ -75,7 +79,6 @@ class Protocol:
         # đọc reply của server
         try:
             line = self.file.readline(MAXLINE + 1).decode()
-            ic(line)
             line = line.strip(" \t\r\n")
         except OSError as e:
             self.close()

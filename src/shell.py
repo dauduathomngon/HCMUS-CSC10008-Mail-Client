@@ -27,8 +27,6 @@ class Shell(Cmd):
         self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"])
         # sau đó connect với server
         self.smtp.connect()
-        # gửi command helo
-        self.smtp.helo()
                 
     def __close(self):
         if self.smtp:

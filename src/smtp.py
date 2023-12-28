@@ -32,6 +32,9 @@ class SMTP(Protocol):
         if self.debug:
             CONSOLE.print(f"[green](SUCCESS)[/green] SMTP Socket đã kết nối với Server:\n\tHost: {self.host}\n\tPort: {self.port}")
 
+        # gửi command helo
+        self.helo()
+
     def get_reply_msg(self):
         line = super().get_reply_msg()
 
@@ -64,6 +67,14 @@ class SMTP(Protocol):
         self.send_command("DATA")
         self.check_error_cmd(354, "DATA")
 
+    def quit(self):
+        self.send_command("QUIT")
+        self.check_error_cmd(221, "QUIT")
+
+    def rset(self):
+        self.send_command("RSET")
+        self.check_error_cmd(250, "RSET")
+
     def sendmsg(self,
                 mail_from: str,
                 mail_to: list[str],
@@ -87,6 +98,13 @@ class SMTP(Protocol):
 
         # sau khi gửi message xong thì ta sẽ skip reply từ server gửi về
         super().get_reply_msg()
+        
+        # sau đó reset server
+        self.quit()
+        
+        # sau đó reconnect server
+        self.close()
+        self.connect()
 
     def sendmail(self, mail: MIMEMultipart):
         # lấy mail gửi
