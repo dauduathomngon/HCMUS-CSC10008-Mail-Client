@@ -33,8 +33,8 @@ class POP3(Protocol):
             CONSOLE.print(f"[green](SUCCESS)[/green] SMTP Socket đã kết nối với Server:\n\tHost: {self.host}\n\tPort: {self.port}\n")
 
     def get_reply_msg(self):
+        
         line = super().get_reply_msg()
-
         if "+" not in line and "-" not in line:
             raise Exception("Server reply không đúng format")
 
@@ -66,6 +66,7 @@ class POP3(Protocol):
         if self.debug:
             msg = self.check_error_cmd("+OK", f"STAT", get_msg=True).split(" ", 1)
             CONSOLE.print(f"Mailbox {self.host}: {self.user_} gồm {int(msg[0])} mail và có tổng cộng {int(msg[1])} bytes\n")
+            
         else:
             self.check_error_cmd("+OK", f"STAT")
 
@@ -82,3 +83,158 @@ class POP3(Protocol):
         # các reply còn lại của command RETR là thông tin về email
         # và ta sẽ xử lý đoạn này sau
         return self.get_remain_msg()
+    
+    def uidl(self):
+        self.send_command("UIDL")
+        self.check_error_cmd("+OK", f"UIDL")
+        # reply sẽ là ID của file được lưu trên server, ví dụ 3627635761526.msg
+        return self.get_remain_msg()
+    
+    def quit(self):
+        self.send_command("UIDL")
+        self.check_error_cmd("+OK", f"QUIT")
+
+    def capa(self):
+        self.send_command("CAPA")
+        self.check_error_cmd("+OK", f"CAPA")
+        temp = self.get_remain_msg()
+
+
+    def extract_mail(self, idx):
+        # lấy tất cả thông tin và nội dung của mail
+        raw_mail = self.retr(idx)
+        email = dict()
+        email["Attachment"] = []
+        email["boundary"] = ""
+        email["CC"] = ""
+        email["To"] = ""
+
+
+        i = 0
+        # duyệt qua từng dòng trong nội dung mail, trích xuất các thông tin tương ứng
+        while i < len(raw_mail) - 1:
+            if "From:" in raw_mail[i]:
+                email["From"] = raw_mail[i].split("From:")[-1]
+
+            elif "To:" in raw_mail[i]:
+                email["To"] = raw_mail[i].split("To:")[-1]
+                
+            elif "Subject:" in raw_mail[i]:
+                email["Subject"] = raw_mail[i].split("Subject:")[-1]
+                  
+            elif "Date:" in raw_mail[i]:
+                email["Date"] = raw_mail[i].split("Date:")[-1]
+                
+            elif "CC:" in raw_mail[i]:
+                email["CC"] = raw_mail[i].split("CC:")[-1]
+                
+            elif "boundary=" in raw_mail[i]:
+                email["boundary"] = raw_mail[i].split("boundary=")[-1][1:-1]
+   
+            # nếu gặp content-tyoe => bắt đầu phần nội dung hoặc attachment
+            elif "Content-Type:" in raw_mail[i]:
+                while True:
+                    # phần nội dung của mail sẽ có text/plain dòng đầu tiên 
+                    if "text/plain" in raw_mail[i]:
+                        content = []
+                        # giữa phần header của và nội dung là 1 dấu \n, duyệt while để bỏ qua những
+                        # dòng chứa thông tin không quan trọng 
+                        while raw_mail[i] != "":
+                            i += 1
+                        # từ vị trí khoảng trắng đến boundary (nếu có) tiếp theo sẽ là nội dung email
+                        while i < len(raw_mail) and (email["boundary"] == "" or email["boundary"] not in raw_mail[i]):
+                            content.append(raw_mail[i])
+                            i += 1
+                        email["Content"] = "".join(content)
+                        # thoát để chuyện sang cụm boundary tiếp theo.
+                        break 
+                    else:
+                        # không phải content => attachment
+                        attachment = {}
+                        for attr in ["Type:", "filename=", "Content-Transfer-Encoding:"]:
+                            j = i
+                            while attr not in raw_mail[j] and j < len(raw_mail) - 1:
+                                j += 1
+                            attachment[attr.replace(":", "").replace("-", "_").replace("=","").lower()] = raw_mail[j].split(attr)[-1].replace("\"", "")
+
+                        # nội dung của file sẽ đọc từ "" đến boundary
+                        attachment["attachment_content"] = []
+                        while raw_mail[i] != "":        
+                            i += 1
+                        while email["boundary"] not in raw_mail[i]:
+                            attachment["attachment_content"].append(raw_mail[i])  
+                            i += 1      
+                        attachment["attachment_content"] = "".join(attachment["attachment_content"])             
+                        email["Attachment"].append(attachment)
+                        break
+            i += 1
+        return email
+                
+
+    def download_mail(self, user, password):     
+        self.capa()
+
+        # kiểm tra user
+        self.user()
+
+        # kiểm tra password
+        self.passwrd()
+
+        # lấy stat của mail
+        self.stat()
+
+        # lấy list các mail có trong mail
+        list_email = self.uidl()
+
+        usr_path = os.path.join(os.getcwd(),'..', 'mailbox', user)
+        if not os.path.exists(usr_path):
+            os.makedirs(usr_path)
+
+        lst_extracted_emails = []
+        # duyệt qua từng file, kiểm tra những file nào chưa đọc thì tải xuống
+        for email in list_email:
+            email_idx, email_id = email.split(" ")[0], email.split(" ")[1].split(".")[0]
+            email_path = os.path.join(usr_path, email_id)
+            extracted_email = self.extract_mail(email_idx)
+            lst_extracted_emails.append(extracted_email)
+            # nếu đã có file => mail đã được tải
+            if os.path.exists(email_path):
+                continue
+            # nếu chưa có file => tạo file chứa trạng thái của mail
+            os.makedirs(os.path.join(email_path))
+            with open(os.path.join(email_path, email_id + ".txt") , "w") as file:
+                # từ email index, tải mail về từ mail server và trích xuất các thông tin tương ứng
+                # ghi giá trị mặc định 0 (chưa đọc) vào file txt
+                file.write("0")
+                for attachment in extracted_email["Attachment"]:
+                    attachment_path = os.path.join(email_path, attachment["filename"])
+                    decode_base64_and_save(attachment["attachment_content"], attachment_path)
+        
+        return lst_extracted_emails
+                
+
+
+
+                
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+        
+
+        

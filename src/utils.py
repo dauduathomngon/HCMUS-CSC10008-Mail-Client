@@ -8,7 +8,7 @@ from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
 from email import encoders
-
+from base64 import b64decode
 # -----------------------------
 # Const values
 # -----------------------------
@@ -123,9 +123,16 @@ def create_file_format(file):
             msg = MIMEBase(file_type, file_ext)
             msg.set_payload(f.read())
         else:
+            print(file_type)
             msg = TYPE[file_type](f.read(), _subtype = file_ext)
 
     file_name = os.path.basename(file)
     encoders.encode_base64(msg)
     msg.add_header('Content-Disposition', 'attachment', filename = file_name)
     return msg
+
+def decode_base64_and_save(encoded_content, output_filename):
+    decoded_content = b64decode(encoded_content)
+    
+    with open(output_filename, 'wb') as file:
+        file.write(decoded_content)
