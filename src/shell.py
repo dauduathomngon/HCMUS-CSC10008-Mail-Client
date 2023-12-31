@@ -19,12 +19,19 @@ class Shell(Cmd):
         self.general_config = process_general(read_config(config_path)["General"])
         self.filter_config = read_config(config_path)["Filter"]
 
-        # kết nối smtp
-        self.__connect_smtp()
+        # tạo cwd = ""
+        self.cwd = "root"
 
+        # kết nối smtp và pop3
+        self.__connect_smtp()
         self.__connect_pop3()
+
+        self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
+
         # tải danh sách mail
-        #self.__get_mail_lst()
+
+
+        
 
     def __connect_smtp(self):
         # tạo smtp 
@@ -38,11 +45,9 @@ class Shell(Cmd):
         # connect voiws server
         self.pop3.connect()
 
-    def __get_mail_lst(self):
+    def get_all_mail(self):
         while True:
-            with LOCK:
-                self.mail_lst = self.pop3.download_mails(self.pop3.user_, self.pop3.passwrd_)
-                print("Đã tải", len(self.mail_lst)," mail\n")
+            self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
             time.sleep(60)
 
     def __close(self):
@@ -63,14 +68,101 @@ class Shell(Cmd):
     def do_help(self, arg):
         pass
 
-    # liệt kê ra các mail trong mail box
+    # liệt kê ra các filter có trong mailbox
     def do_ls(self, arg):
-        with LOCK:
-            for email in self.mail_lst:
-                pass
-                
-                
+        # nếu vẫn đang ở root => bắt chọn filter trước
+        if self.cwd == "root":
+            for filter in self.grp_mail_lst:
+                CONSOLE.print(filter + "")
+        else:
+            # đặt lock để tránh trường hợp đang in danh sách mail thì hệ thống down mail về => lỗi
+            with LOCK:
+                i = 0
+                #Duyệt qua từng mail trong filter (được lưu ở cwd)
+                for email in self.grp_mail_lst[self.cwd]:
+                    i += 1
+                    if email["Read Status"] == 0:
+                        CONSOLE.print("[",i,"] [CHƯA ĐỌC] NGƯỜI GỬI: ", email["From"]," || NỘI DUNG: ", email["Subject"])
+                    else:
+                        CONSOLE.print("[",i,"] NGƯỜI GỬI: ", email["From"]," || NỘI DUNG: ", email["Subject"]," ")
 
+                
+    
+    # liệt kê các email thuộc filter arg
+    def do_cd(self, arg):
+        if arg in self.grp_mail_lst:
+            self.cwd = arg
+        elif arg == "..":
+            self.cwd = "root"
+        else:
+            CONSOLE.print("Không tồn tại thư mục: ", arg + "")
+
+    # đọc mail
+    def do_read(self, arg):
+ 
+        with LOCK:
+            # xử lí input đầu vào
+            arg = int(arg)
+            if not arg:
+                CONSOLE.print("Chỉ mục của email phải là số, cú pháp đúng: read chỉ_mục_email_cần_đọc ")
+            elif self.cwd == "root":
+                CONSOLE.print("Cần chọn thư mục cần đọc mail trước. Sử dụng cd tên_thư_mục ")
+            elif arg < 1 or arg > len(self.grp_mail_lst[self.cwd]):
+                CONSOLE.print("Chỉ mục không hợp lệ! Chỉ mục phải thuộc khoảng 0 -> ", len(self.grp_mail_lst[self.cwd]),"")
+            else:
+                # đổi trạng thái của mail id.txt trong mailbox
+                self.pop3.read_email(self.grp_mail_lst[self.cwd][arg-1])
+
+                # in ra từng thành phần có trong info
+                list_info = ["From", "To", "CC", "Subject", "Content", "Attachment"]
+                for info in list_info:
+                    if info != "" and info != "Attachment":
+                        CONSOLE.print(info,": ", self.grp_mail_lst[self.cwd][arg-1][info],"")
+
+                    # nếu là attachment thì in ra danh sách tên
+                    elif info == "Attachment":
+                        if len(self.grp_mail_lst[self.cwd][arg-1][info]) != 0:
+                            CONSOLE.print("Attachment: ")
+                            for attachment in self.grp_mail_lst[self.cwd][arg-1][info]:
+                                name = attachment["filename"]
+                                CONSOLE.print("[",name,"] ")  
+                            CONSOLE.print("")
+
+                            # Tải email về đường dẫn
+                            download = PROMPT.ask("Nhập 1 để tải các file trong mail, 0 để bỏ qua: ")
+                            if int(download) == 1:
+                                path = PROMPT.ask("Nhập đường dẫn muốn lưu: ")
+                                while not os.path.exists(path):
+                                    CONSOLE.print("Đường dẫn không hợp lệ. Vui lòng nhập lại.")
+                                    path = PROMPT.ask("Nhập đường dẫn muốn lưu: ")
+                                for attachment in self.grp_mail_lst[self.cwd][arg-1][info]:
+                                    try:
+                                        decode_base64_and_save(attachment["attachment_content"], os.path.join(path, attachment["filename"]))
+                                    except:
+                                        CONSOLE.print_exception()
+                                        return
+                    
+
+
+                    
+
+
+
+                            
+
+
+
+ 
+
+        
+
+                    
+                    
+
+
+                
+            
+                
     # thực hiện việc gửi mail
     def do_sendmail(self, arg):
         # tách các argument ra
@@ -95,7 +187,7 @@ class Shell(Cmd):
         # tạo cc (nếu có)
         if "-cc" in arg_list:
             cc = PROMPT.ask("[cyan]CC[/cyan]")
-            if not check_mail_format(to):
+            if not check_mail_format(cc):
                 CONSOLE.print("[red](ERROR)[/red] Định dạng mail không hợp lệ")
                 return
             mail["CC"] = cc
@@ -103,7 +195,7 @@ class Shell(Cmd):
         # tạo bcc (nếu có)
         if "-bcc" in arg_list:
             bcc = PROMPT.ask("[cyan]BCC[/cyan]")
-            if not check_mail_format(to):
+            if not check_mail_format(bcc):
                 CONSOLE.print("[red](ERROR)[/red] Định dạng mail không hợp lệ")
                 return
             mail["BCC"] = bcc

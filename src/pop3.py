@@ -249,7 +249,13 @@ class POP3(Protocol):
                     attachment_path = os.path.join(email_path, attachment["filename"])
                     decode_base64_and_save(attachment["attachment_content"], attachment_path)
         
-        return lst_extracted_emails
+        filter_groups = dict()
+        for email in lst_extracted_emails:
+            filter_groups[email["Filter"]] = []
+        for email in lst_extracted_emails:
+            filter_groups[email["Filter"]].append(email)
+            
+        return filter_groups
                 
         
 
