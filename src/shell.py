@@ -22,15 +22,33 @@ class Shell(Cmd):
         # kết nối smtp
         self.__connect_smtp()
 
+        self.__connect_pop3()
+        # tải danh sách mail
+        #self.__get_mail_lst()
+
     def __connect_smtp(self):
         # tạo smtp 
         self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"])
         # sau đó connect với server
         self.smtp.connect()
-                
+
+    def __connect_pop3(self):
+        # tạo pop3
+        self.pop3 = POP3(self.general_config["MailServer"], self.general_config["POP3"], self.general_config["Mail"], self.general_config["Password"], self.filter_config) 
+        # connect voiws server
+        self.pop3.connect()
+
+    def __get_mail_lst(self):
+        while True:
+            with LOCK:
+                self.mail_lst = self.pop3.download_mails(self.pop3.user_, self.pop3.passwrd_)
+                print("Đã tải", len(self.mail_lst)," mail\n")
+            time.sleep(60)
+
     def __close(self):
         if self.smtp:
             self.smtp.close()
+            self.pop3.close()
 
     # thoát shell
     def do_exit(self, arg):
@@ -47,7 +65,11 @@ class Shell(Cmd):
 
     # liệt kê ra các mail trong mail box
     def do_ls(self, arg):
-        pass
+        with LOCK:
+            for email in self.mail_lst:
+                pass
+                
+                
 
     # thực hiện việc gửi mail
     def do_sendmail(self, arg):
@@ -111,7 +133,7 @@ class Shell(Cmd):
             # file không thể vượt quá 5MB
             for file in attachments:
                 # đưa bytes về megabytes
-                if int(os.stat(file).st_size / float(1 << 20)) > 5:
+                if int(os.stat(file).st_size / float(1 << 20)) > 3:
                     CONSOLE.print("[red](ERROR)[/red] Không thể gửi file lớn hơn 5MB. Vui lòng chọn lại file")
                     attachments.remove(file)
                     # chọn lại file

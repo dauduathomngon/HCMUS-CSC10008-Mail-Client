@@ -1,5 +1,5 @@
 General: 
-  Username: Phan Nguyen Phuong <phuong@dz.com>
+  Username: <testing@gmail.com>
   Password: 123
   MailServer: 127.0.0.1
   SMTP: 2225
@@ -8,14 +8,14 @@ General:
 
 Filter:
   - From:
-    - ahihi@testing.com
+    - phuong@dz.com
     - ahuu@testing.com
     To: Project
 
   - Subject: 
     - "urgent"
     - "ASAP"
-    To: Important
+    To: Important 
 
   - Content:
     - "report"

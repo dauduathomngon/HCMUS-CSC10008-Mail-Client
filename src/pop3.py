@@ -9,11 +9,12 @@ class POP3(Protocol):
     # Constructor
     # --------------------------------------
     def __init__(self, host, port,
-                 user, passwrd,
+                 user, passwrd, filter_config,
                  debug = True) -> None:
         super().__init__(host, port, debug)
         self.user_ = user
         self.passwrd_ = passwrd
+        self.filter_config = filter_config
 
     # --------------------------------------
     # Method
@@ -99,16 +100,52 @@ class POP3(Protocol):
         self.check_error_cmd("+OK", f"CAPA")
         temp = self.get_remain_msg()
 
-
-    def extract_mail(self, idx):
+    # kiểm tra 1 email đã được đọc hay chưa
+    def is_read(self, email):
+        directory = os.path.join(os.getcwd(), ".." , "mailbox", self.user_, email["Filter"], email["ID"])
+        email_file_name = email["ID"] + ".txt"
+        # đọc trong thư mục user xem có mail đó không, nếu có thì đọc kí tự đầu tiên
+        # tương ứng với trạng thái đã đọc hay chưa của
+        for root, dirs, files in os.walk(directory):
+            if email_file_name in files:
+                email_file_path = os.path.join(root, email_file_name)
+                with open(email_file_path, "r") as f:
+                    read_status = int(f.read(1))
+                    return read_status
+        return 0 
+    # filter 1 email, trả về chuỗi là loại của email đó
+    def filter_email(self, email):
+        for line in self.filter_config:
+            attr, mail_type = line.keys()
+            if attr == "Spam":
+                for evidence in line[attr]:
+                    if evidence.lower() in email["Subject"].lower() or evidence in email["Content"].lower():
+                        return line[mail_type]
+            else:
+                for evidence in line[attr]:
+                    if evidence.lower() in email[attr]:
+                        return line[mail_type]
+        return "Inbox"
+    # đọc 1 email, cập nhật lại bit đã đọc trong file txt = 1
+    def read_email(self, email):
+        
+        directory = os.path.join(os.getcwd(), ".." , "mailbox", self.user_, email["Filter"], email["ID"])
+        email_file_name = email["ID"] + ".txt"
+        for root, dirs, files in os.walk(directory):
+            if email_file_name in files:
+                email_file_path = os.path.join(root, email_file_name)
+                with open(email_file_path, "w") as f:
+                    f.write("1")
+    # truyền vào idx và id của 1 email, gọi retr để down email về và xử lí, lưu vào dict               
+    def extract_mail(self, idx, id):
         # lấy tất cả thông tin và nội dung của mail
         raw_mail = self.retr(idx)
         email = dict()
+        email["ID"] = id
         email["Attachment"] = []
         email["boundary"] = ""
         email["CC"] = ""
         email["To"] = ""
-
 
         i = 0
         # duyệt qua từng dòng trong nội dung mail, trích xuất các thông tin tương ứng
@@ -169,9 +206,8 @@ class POP3(Protocol):
                         break
             i += 1
         return email
-                
-
-    def download_mail(self, user, password):     
+    # gọi tất cả những bước trên.         
+    def download_emails(self, user, password):     
         self.capa()
 
         # kiểm tra user
@@ -194,9 +230,12 @@ class POP3(Protocol):
         # duyệt qua từng file, kiểm tra những file nào chưa đọc thì tải xuống
         for email in list_email:
             email_idx, email_id = email.split(" ")[0], email.split(" ")[1].split(".")[0]
-            email_path = os.path.join(usr_path, email_id)
-            extracted_email = self.extract_mail(email_idx)
+            extracted_email = self.extract_mail(email_idx, email_id)
+            extracted_email["Filter"] = self.filter_email(extracted_email)
+            extracted_email["Read Status"] = self.is_read(extracted_email)
             lst_extracted_emails.append(extracted_email)
+
+            email_path = os.path.join(usr_path, extracted_email["Filter"], email_id)
             # nếu đã có file => mail đã được tải
             if os.path.exists(email_path):
                 continue
@@ -212,6 +251,7 @@ class POP3(Protocol):
         
         return lst_extracted_emails
                 
+        
 
 
 
