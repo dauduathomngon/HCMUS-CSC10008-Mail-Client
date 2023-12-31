@@ -66,7 +66,7 @@ class POP3(Protocol):
         self.send_command("STAT")
         if self.debug:
             msg = self.check_error_cmd("+OK", f"STAT", get_msg=True).split(" ", 1)
-            CONSOLE.print(f"Mailbox {self.host}: {self.user_} gồm {int(msg[0])} mail và có tổng cộng {int(msg[1])} bytes\n")
+            #CONSOLE.print(f"Mailbox {self.host}: {self.user_} gồm {int(msg[0])} mail và có tổng cộng {int(msg[1])} bytes\n")
             
         else:
             self.check_error_cmd("+OK", f"STAT")
@@ -136,6 +136,7 @@ class POP3(Protocol):
                 email_file_path = os.path.join(root, email_file_name)
                 with open(email_file_path, "w") as f:
                     f.write("1")
+                    email["Read Status"] = 1    
     # truyền vào idx và id của 1 email, gọi retr để down email về và xử lí, lưu vào dict               
     def extract_mail(self, idx, id):
         # lấy tất cả thông tin và nội dung của mail
@@ -254,7 +255,8 @@ class POP3(Protocol):
             filter_groups[email["Filter"]] = []
         for email in lst_extracted_emails:
             filter_groups[email["Filter"]].append(email)
-            
+
+
         return filter_groups
                 
         

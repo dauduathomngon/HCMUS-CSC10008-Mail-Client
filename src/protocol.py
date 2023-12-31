@@ -6,7 +6,7 @@ class Protocol:
     # --------------------------------------
     # Constructor
     # --------------------------------------
-    def __init__(self, host, port, debug) -> None:
+    def __init__(self, host, port, debug = False) -> None:
         self.host = host
         self.port = port
 

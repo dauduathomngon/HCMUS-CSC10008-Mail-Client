@@ -26,7 +26,10 @@ class Shell(Cmd):
         self.__connect_smtp()
         self.__connect_pop3()
 
-        self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
+        self.download_mail_thread = threading.Thread(target=self.get_all_mail)
+        self.download_mail_thread.daemon = True  # Đảm bảo luồng kết thúc khi chương trình chính kết thúc
+        self.download_mail_thread.start()
+
 
         # tải danh sách mail
 
@@ -35,24 +38,27 @@ class Shell(Cmd):
 
     def __connect_smtp(self):
         # tạo smtp 
-        self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"])
+        self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"],debug=False)
         # sau đó connect với server
         self.smtp.connect()
 
     def __connect_pop3(self):
         # tạo pop3
-        self.pop3 = POP3(self.general_config["MailServer"], self.general_config["POP3"], self.general_config["Mail"], self.general_config["Password"], self.filter_config) 
+        self.pop3 = POP3(self.general_config["MailServer"], self.general_config["POP3"], self.general_config["Mail"], self.general_config["Password"], self.filter_config,debug=False) 
         # connect voiws server
         self.pop3.connect()
 
     def get_all_mail(self):
         while True:
-            self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
-            time.sleep(60)
+            with LOCK:
+                self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
+            time.sleep(30)
 
     def __close(self):
         if self.smtp:
             self.smtp.close()
+        
+        if self.pop3:
             self.pop3.close()
 
     # thoát shell
@@ -88,7 +94,7 @@ class Shell(Cmd):
 
                 
     
-    # liệt kê các email thuộc filter arg
+    # trỏ đến 1 thư mục filter
     def do_cd(self, arg):
         if arg in self.grp_mail_lst:
             self.cwd = arg
