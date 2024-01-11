@@ -9,9 +9,8 @@ from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
 from email import encoders
 import threading
-import time
 from base64 import b64decode
-from pathlib import Path
+
 # -----------------------------
 # Const values
 # -----------------------------
@@ -23,15 +22,12 @@ SMTP_PORT = 2225
 POP3_PORT = 3335
 AUTOLOAD = 10
  
-TIMEOUT = 100
 CRLF = "\r\n"
 BCRLF = b"\r\n"
 MAXLINE = 2049
 
 LOCK = threading.Lock()
 
-CONFIG_FILE = "config.yaml"
- 
 CONFIG_GENERAL = {"Autoload": AUTOLOAD, 
                   "MailServer": MAILSERVER,
                   "POP3": POP3_PORT,
@@ -142,6 +138,64 @@ def create_file_format(file):
 
 def decode_base64_and_save(encoded_content, output_filename):
     decoded_content = b64decode(encoded_content)
-    
     with open(output_filename, 'wb') as file:
         file.write(decoded_content)
+
+def print_greeting(again=False):
+    if not again:
+        CONSOLE.print("-"*70)
+        CONSOLE.print("[bold italic green]Hi[/bold italic green] :dragon: \nTớ là rồng, tớ sẽ hướng dẫn cậu cách dùng chương trình này")
+    else:
+        CONSOLE.print("-"*70)
+        CONSOLE.print("[bold italic green]Hi[/bold italic green] :dragon: \nTớ đã trở lại rồi đây")
+
+    CONSOLE.print("- Lệnh [bold red]clear[/bold red] để clear toàn bộ màn hình.")
+    CONSOLE.print("- Lệnh [bold red]exit[/bold red] để thoát chương trình.")
+    CONSOLE.print("- Lệnh [bold red]sendmail[/bold red] để tiến hành gủi mail.")
+    CONSOLE.print("\t+ [bold red]-a[/bold red] để gủi mail có file đính kèm.")
+    CONSOLE.print("\t+ [bold red]-cc[/bold red] để gủi mail có CC.")
+    CONSOLE.print("\t+ [bold red]-bcc[/bold red] để gủi mail có BCC.")
+    CONSOLE.print("- Lệnh [bold red]ls[/bold red] để hiển thị các folder hoặc mail trong mailbox.")
+    CONSOLE.print("- Lệnh [bold red]cd[/bold red] để đi đến một folder trong mailbox.")
+    CONSOLE.print("- Lệnh [bold red]read mail_number[/bold red] để đọc mail có số thứ tự = mail_number.")
+    CONSOLE.print("Nhưng cậu có thể dùng lệnh [bold red]help[/bold red] để gọi tớ trợ giúp cậu.")
+    CONSOLE.print("-"*70)
+
+    if not again:
+        print(r"""
+      \                   / \  //\
+       \    |\___/|      /   \//  \\
+            /0  0  \__  /    //  | \ \
+           /     /  \/_/    //   |  \  \
+           @_^_@'/   \/_   //    |   \   \
+           //_^_/     \/_ //     |    \    \
+        ( //) |        \///      |     \     \
+      ( / /) _|_ /   )  //       |      \     _\
+    ( // /) '/,_ _ _/  ( ; -.    |    _ _\.-~        .-~~~^-.
+  (( / / )) ,-{        _      `-.|.-~-.           .~         `.
+ (( // / ))  '/\      /                 ~-. _ .-~      .-~^-.  \
+ (( /// ))      `.   {            }                   /      \  \
+  (( / ))     .----~-.\        \-'                 .~         \  `. \^-.
+             ///.----..>        \             _ -~             `.  ^-`  ^-_
+               ///-._ _ _ _ _ _ _}^ - - - - ~                     ~-- ,.-~
+                                                                  /.-~          
+              """)
+    else: 
+        print(r"""
+      \                   / \  //\
+       \    |\___/|      /   \//  \\
+            /^  ^  \__  /    //  | \ \
+           /     /  \/_/    //   |  \  \
+           @_^_@'/   \/_   //    |   \   \
+           //_^_/     \/_ //     |    \    \
+        ( //) |        \///      |     \     \
+      ( / /) _|_ /   )  //       |      \     _\
+    ( // /) '/,_ _ _/  ( ; -.    |    _ _\.-~        .-~~~^-.
+  (( / / )) ,-{        _      `-.|.-~-.           .~         `.
+ (( // / ))  '/\      /                 ~-. _ .-~      .-~^-.  \
+ (( /// ))      `.   {            }                   /      \  \
+  (( / ))     .----~-.\        \-'                 .~         \  `. \^-.
+             ///.----..>        \             _ -~             `.  ^-`  ^-_
+               ///-._ _ _ _ _ _ _}^ - - - - ~                     ~-- ,.-~
+                                                                  /.-~          
+    """)

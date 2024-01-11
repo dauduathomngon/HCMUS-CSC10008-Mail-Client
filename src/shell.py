@@ -4,7 +4,7 @@ from tkinter import filedialog
 from datetime import datetime
 from email.utils import make_msgid
 from email.mime.multipart import MIMEMultipart
-
+import time
 from smtp import SMTP
 from pop3 import POP3
 from utils import *
@@ -20,44 +20,51 @@ class Shell(Cmd):
         self.filter_config = read_config(config_path)["Filter"]
 
         # tạo cwd = ""
-        self.cwd = "root"
+        self.cwd = "~"
+        self.__update_prompt()
 
         # kết nối smtp và pop3
         self.__connect_smtp()
         self.__connect_pop3()
 
-        self.download_mail_thread = threading.Thread(target=self.get_all_mail)
+        self.download_mail_thread = threading.Thread(target=self.__get_all_mail)
         self.download_mail_thread.daemon = True  # Đảm bảo luồng kết thúc khi chương trình chính kết thúc
         self.download_mail_thread.start()
 
-
-        # tải danh sách mail
-
-
-        
+    def __update_prompt(self):
+        time_now = datetime.now()
+        Shell.prompt = f"({time_now.hour}:{time_now.minute}) Cậu đang ở [{self.cwd}] > "
 
     def __connect_smtp(self):
         # tạo smtp 
-        self.smtp = SMTP(self.general_config["MailServer"], self.general_config["SMTP"],debug=False)
+        self.smtp = SMTP(self.general_config["MailServer"],
+                         self.general_config["SMTP"],
+                         debug=False)
         # sau đó connect với server
         self.smtp.connect()
 
     def __connect_pop3(self):
         # tạo pop3
-        self.pop3 = POP3(self.general_config["MailServer"], self.general_config["POP3"], self.general_config["Mail"], self.general_config["Password"], self.filter_config,debug=False) 
-        # connect voiws server
+        self.pop3 = POP3(self.general_config["MailServer"],
+                         self.general_config["POP3"],
+                         self.general_config["Mail"],
+                         self.general_config["Password"],
+                         self.filter_config,
+                         debug=False) 
+        # connect với server
         self.pop3.connect()
 
-    def get_all_mail(self):
+    # tải tất cả mail trên server
+    def __get_all_mail(self):
         while True:
             with LOCK:
                 self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
-            time.sleep(30)
+            time.sleep(self.general_config["Autoload"])
 
+    # đóng shell
     def __close(self):
         if self.smtp:
             self.smtp.close()
-        
         if self.pop3:
             self.pop3.close()
 
@@ -72,14 +79,14 @@ class Shell(Cmd):
 
     # xuất ra thông tin help
     def do_help(self, arg):
-        pass
+        print_greeting(again=True)
 
     # liệt kê ra các filter có trong mailbox
     def do_ls(self, arg):
         # nếu vẫn đang ở root => bắt chọn filter trước
-        if self.cwd == "root":
+        if self.cwd == "~":
             for filter in self.grp_mail_lst:
-                CONSOLE.print(filter + "")
+                CONSOLE.print(f"📂 {filter} ")
         else:
             # đặt lock để tránh trường hợp đang in danh sách mail thì hệ thống down mail về => lỗi
             with LOCK:
@@ -88,24 +95,23 @@ class Shell(Cmd):
                 for email in self.grp_mail_lst[self.cwd]:
                     i += 1
                     if email["Read Status"] == 0:
-                        CONSOLE.print("[",i,"] [CHƯA ĐỌC] NGƯỜI GỬI: ", email["From"]," || NỘI DUNG: ", email["Subject"])
+                        CONSOLE.print(f"[{i}]📧 [purple][CHƯA ĐỌC][/purple] NGƯỜI GỬI: {email["From"]} || TIÊU ĐỀ: {email["Subject"]}")
                     else:
-                        CONSOLE.print("[",i,"] NGƯỜI GỬI: ", email["From"]," || NỘI DUNG: ", email["Subject"]," ")
+                        CONSOLE.print(f"[{i}]📧 NGƯỜI GỬI: {email["From"]} || TIÊU ĐỀ: {email["Subject"]}")
 
-                
-    
     # trỏ đến 1 thư mục filter
     def do_cd(self, arg):
         if arg in self.grp_mail_lst:
             self.cwd = arg
+            self.__update_prompt()
         elif arg == "..":
-            self.cwd = "root"
+            self.cwd = "~"
+            self.__update_prompt()
         else:
             CONSOLE.print("Không tồn tại thư mục: ", arg + "")
 
     # đọc mail
     def do_read(self, arg):
- 
         with LOCK:
             # xử lí input đầu vào
             arg = int(arg)
@@ -132,15 +138,14 @@ class Shell(Cmd):
                             for attachment in self.grp_mail_lst[self.cwd][arg-1][info]:
                                 name = attachment["filename"]
                                 CONSOLE.print("[",name,"] ")  
-                            CONSOLE.print("")
 
                             # Tải email về đường dẫn
                             download = PROMPT.ask("Nhập 1 để tải các file trong mail, 0 để bỏ qua: ")
                             if int(download) == 1:
-                                path = PROMPT.ask("Nhập đường dẫn muốn lưu: ")
+                                path = filedialog.askdirectory(parent=ROOT)
                                 while not os.path.exists(path):
                                     CONSOLE.print("Đường dẫn không hợp lệ. Vui lòng nhập lại.")
-                                    path = PROMPT.ask("Nhập đường dẫn muốn lưu: ")
+                                    path = filedialog.askdirectory(parent=ROOT)
                                 for attachment in self.grp_mail_lst[self.cwd][arg-1][info]:
                                     try:
                                         decode_base64_and_save(attachment["attachment_content"], os.path.join(path, attachment["filename"]))
@@ -148,27 +153,6 @@ class Shell(Cmd):
                                         CONSOLE.print_exception()
                                         return
                     
-
-
-                    
-
-
-
-                            
-
-
-
- 
-
-        
-
-                    
-                    
-
-
-                
-            
-                
     # thực hiện việc gửi mail
     def do_sendmail(self, arg):
         # tách các argument ra
@@ -228,11 +212,11 @@ class Shell(Cmd):
                 CONSOLE.print("[red](ERROR)[/red] Không thể gửi nhiều hơn 5 file")
                 return 
 
-            # file không thể vượt quá 5MB
+            # file không thể vượt quá 3MB
             for file in attachments:
                 # đưa bytes về megabytes
                 if int(os.stat(file).st_size / float(1 << 20)) > 3:
-                    CONSOLE.print("[red](ERROR)[/red] Không thể gửi file lớn hơn 5MB. Vui lòng chọn lại file")
+                    CONSOLE.print("[red](ERROR)[/red] Không thể gửi file lớn hơn 3MB. Vui lòng chọn lại file")
                     attachments.remove(file)
                     # chọn lại file
                     new_files = list(filedialog.askopenfilenames(parent=ROOT))

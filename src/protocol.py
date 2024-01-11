@@ -1,6 +1,5 @@
 import socket
 from utils import *
-from icecream import ic
 
 class Protocol:
     # --------------------------------------
@@ -19,9 +18,6 @@ class Protocol:
         # tạo socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # đặt timeout
-        self.sock.settimeout(TIMEOUT)
-
     # --------------------------------------
     # Method
     # --------------------------------------
@@ -31,7 +27,6 @@ class Protocol:
         """
         if self.sock is None:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(TIMEOUT)
 
         try:
             if self.debug:

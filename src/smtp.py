@@ -1,10 +1,8 @@
 import re
-import socket
 from email.utils import getaddresses
 from email.mime.multipart import MIMEMultipart
 from protocol import Protocol
 from utils import *
-from icecream import ic
 
 # Tham khảo:
 # - https://datatracker.ietf.org/doc/html/rfc821

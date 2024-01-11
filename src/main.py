@@ -3,7 +3,8 @@ from utils import *
 
 if __name__ == "__main__":
     try:
-        s = Shell(CONFIG_FILE)
+        s = Shell("config.yaml")
+        print_greeting()
         s.cmdloop()
     except:
         CONSOLE.print_exception()

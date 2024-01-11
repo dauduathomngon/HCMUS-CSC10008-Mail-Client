@@ -2,15 +2,15 @@ from protocol import Protocol
 from utils import *
 
 # Tham khảo: 
-# - https://datatracker.ietf.org/doc/html/rfc1939.html
-# - https://github.com/python/cpython/tree/3.12/Lib/poplib.py
+# - https://d...content-available-to-author-only...f.org/doc/html/rfc1939.html
+# - https://g...content-available-to-author-only...b.com/python/cpython/tree/3.12/Lib/poplib.py
 class POP3(Protocol):
     # --------------------------------------
     # Constructor
     # --------------------------------------
     def __init__(self, host, port,
-                 user, passwrd, filter_config,
-                 debug = True) -> None:
+                user, passwrd, filter_config,
+                debug = True) -> None:
         super().__init__(host, port, debug)
         self.user_ = user
         self.passwrd_ = passwrd
@@ -66,8 +66,7 @@ class POP3(Protocol):
         self.send_command("STAT")
         if self.debug:
             msg = self.check_error_cmd("+OK", f"STAT", get_msg=True).split(" ", 1)
-            #CONSOLE.print(f"Mailbox {self.host}: {self.user_} gồm {int(msg[0])} mail và có tổng cộng {int(msg[1])} bytes\n")
-            
+            CONSOLE.print(f"Mailbox {self.host}: {self.user_} gồm {int(msg[0])} mail và có tổng cộng {int(msg[1])} bytes\n")
         else:
             self.check_error_cmd("+OK", f"STAT")
 
@@ -113,6 +112,7 @@ class POP3(Protocol):
                     read_status = int(f.read(1))
                     return read_status
         return 0 
+
     # filter 1 email, trả về chuỗi là loại của email đó
     def filter_email(self, email):
         for line in self.filter_config:
@@ -126,9 +126,9 @@ class POP3(Protocol):
                     if evidence.lower() in email[attr]:
                         return line[mail_type]
         return "Inbox"
+
     # đọc 1 email, cập nhật lại bit đã đọc trong file txt = 1
     def read_email(self, email):
-        
         directory = os.path.join(os.getcwd(), ".." , "mailbox", self.user_, email["Filter"], email["ID"])
         email_file_name = email["ID"] + ".txt"
         for root, dirs, files in os.walk(directory):
@@ -137,6 +137,7 @@ class POP3(Protocol):
                 with open(email_file_path, "w") as f:
                     f.write("1")
                     email["Read Status"] = 1    
+
     # truyền vào idx và id của 1 email, gọi retr để down email về và xử lí, lưu vào dict               
     def extract_mail(self, idx, id):
         # lấy tất cả thông tin và nội dung của mail
@@ -159,7 +160,7 @@ class POP3(Protocol):
                 
             elif "Subject:" in raw_mail[i]:
                 email["Subject"] = raw_mail[i].split("Subject:")[-1]
-                  
+                
             elif "Date:" in raw_mail[i]:
                 email["Date"] = raw_mail[i].split("Date:")[-1]
                 
@@ -168,7 +169,7 @@ class POP3(Protocol):
                 
             elif "boundary=" in raw_mail[i]:
                 email["boundary"] = raw_mail[i].split("boundary=")[-1][1:-1]
-   
+
             # nếu gặp content-tyoe => bắt đầu phần nội dung hoặc attachment
             elif "Content-Type:" in raw_mail[i]:
                 while True:
@@ -177,44 +178,57 @@ class POP3(Protocol):
                         content = []
                         # giữa phần header của và nội dung là 1 dấu \n, duyệt while để bỏ qua những
                         # dòng chứa thông tin không quan trọng 
+                        is_attachment = False
                         while raw_mail[i] != "":
+                            if "attachment" in raw_mail[i]:
+                                is_attachment = True
+                                break
                             i += 1
-                        # từ vị trí khoảng trắng đến boundary (nếu có) tiếp theo sẽ là nội dung email
-                        while i < len(raw_mail) and (email["boundary"] == "" or email["boundary"] not in raw_mail[i]):
-                            content.append(raw_mail[i])
-                            i += 1
-                        email["Content"] = "".join(content)
-                        # thoát để chuyện sang cụm boundary tiếp theo.
-                        break 
-                    else:
-                        # không phải content => attachment
-                        attachment = {}
-                        for attr in ["Type:", "filename=", "Content-Transfer-Encoding:"]:
-                            j = i
-                            while attr not in raw_mail[j] and j < len(raw_mail) - 1:
-                                j += 1
-                            attachment[attr.replace(":", "").replace("-", "_").replace("=","").lower()] = raw_mail[j].split(attr)[-1].replace("\"", "")
 
-                        # nội dung của file sẽ đọc từ "" đến boundary
-                        attachment["attachment_content"] = []
-                        while raw_mail[i] != "":        
-                            i += 1
-                        while email["boundary"] not in raw_mail[i]:
-                            attachment["attachment_content"].append(raw_mail[i])  
-                            i += 1      
-                        attachment["attachment_content"] = "".join(attachment["attachment_content"])             
-                        email["Attachment"].append(attachment)
-                        break
+                        if not is_attachment:
+                            # từ vị trí khoảng trắng đến boundary (nếu có) tiếp theo sẽ là nội dung email
+                            while i < len(raw_mail) and (email["boundary"] == "" or email["boundary"] not in raw_mail[i]):
+                                content.append(raw_mail[i])
+                                i += 1
+                            email["Content"] = "".join(content)
+                            # thoát để chuyện sang cụm boundary tiếp theo.
+                            break 
+                    
+                    # không phải content => attachment
+                    attachment = {}
+                    for attr in ["filename="]:
+                        j = i
+                        while attr not in raw_mail[j] and j < len(raw_mail) - 1:
+                            j += 1
+                        attachment[attr.replace(":", "").replace("-", "_").replace("=","").lower()] = raw_mail[j].split(attr)[-1].replace("\"", "")
+
+                    # nội dung của file sẽ đọc từ "" đến boundary
+                    attachment["attachment_content"] = []
+                    while raw_mail[i] != "":        
+                        i += 1
+                    while email["boundary"] not in raw_mail[i]:
+                        attachment["attachment_content"].append(raw_mail[i])  
+                        i += 1      
+                    attachment["attachment_content"] = "".join(attachment["attachment_content"])             
+                    email["Attachment"].append(attachment)
+                    break
             i += 1
         return email
+
     # gọi tất cả những bước trên.         
     def download_emails(self, user, password):     
         self.capa()
 
         # kiểm tra user
+        if user != self.user_:
+            CONSOLE.print("[red]ERROR[/red]: Username không đúng!")
+            return
         self.user()
 
         # kiểm tra password
+        if password != self.passwrd_:
+            CONSOLE.print("[red]ERROR[/red]: Password không đúng!")
+            return
         self.passwrd()
 
         # lấy stat của mail
@@ -256,33 +270,4 @@ class POP3(Protocol):
         for email in lst_extracted_emails:
             filter_groups[email["Filter"]].append(email)
 
-
         return filter_groups
-                
-        
-
-
-
-                
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-        
-
-        
