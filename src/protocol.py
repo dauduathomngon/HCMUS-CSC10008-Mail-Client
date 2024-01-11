@@ -17,6 +17,7 @@ class Protocol:
 
         # tạo socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.settimeout(TIMEOUT)
 
     # --------------------------------------
     # Method

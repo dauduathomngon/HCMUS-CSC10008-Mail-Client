@@ -91,7 +91,7 @@ class POP3(Protocol):
         return self.get_remain_msg()
     
     def quit(self):
-        self.send_command("UIDL")
+        self.send_command("QUIT")
         self.check_error_cmd("+OK", f"QUIT")
 
     def capa(self):
@@ -260,9 +260,6 @@ class POP3(Protocol):
                 # từ email index, tải mail về từ mail server và trích xuất các thông tin tương ứng
                 # ghi giá trị mặc định 0 (chưa đọc) vào file txt
                 file.write("0")
-                for attachment in extracted_email["Attachment"]:
-                    attachment_path = os.path.join(email_path, attachment["filename"])
-                    decode_base64_and_save(attachment["attachment_content"], attachment_path)
         
         filter_groups = dict()
         for email in lst_extracted_emails:

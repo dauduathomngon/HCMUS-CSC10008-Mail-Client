@@ -69,10 +69,6 @@ class SMTP(Protocol):
         self.send_command("QUIT")
         self.check_error_cmd(221, "QUIT")
 
-    def rset(self):
-        self.send_command("RSET")
-        self.check_error_cmd(250, "RSET")
-
     def sendmsg(self,
                 mail_from: str,
                 mail_to: list[str],

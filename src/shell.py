@@ -27,7 +27,7 @@ class Shell(Cmd):
         self.__connect_smtp()
         self.__connect_pop3()
 
-        self.download_mail_thread = threading.Thread(target=self.__get_all_mail)
+        self.download_mail_thread = threading.Thread(target=self.get_all_mail)
         self.download_mail_thread.daemon = True  # Đảm bảo luồng kết thúc khi chương trình chính kết thúc
         self.download_mail_thread.start()
 
@@ -55,7 +55,7 @@ class Shell(Cmd):
         self.pop3.connect()
 
     # tải tất cả mail trên server
-    def __get_all_mail(self):
+    def get_all_mail(self):
         while True:
             with LOCK:
                 self.grp_mail_lst = self.pop3.download_emails(self.pop3.user_, self.pop3.passwrd_)
