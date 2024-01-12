@@ -1,10 +1,8 @@
 import re
-import socket
 from email.utils import getaddresses
 from email.mime.multipart import MIMEMultipart
 from protocol import Protocol
 from utils import *
-from icecream import ic
 
 # Tham khảo:
 # - https://datatracker.ietf.org/doc/html/rfc821
@@ -70,10 +68,6 @@ class SMTP(Protocol):
     def quit(self):
         self.send_command("QUIT")
         self.check_error_cmd(221, "QUIT")
-
-    def rset(self):
-        self.send_command("RSET")
-        self.check_error_cmd(250, "RSET")
 
     def sendmsg(self,
                 mail_from: str,

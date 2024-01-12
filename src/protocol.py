@@ -1,12 +1,11 @@
 import socket
 from utils import *
-from icecream import ic
 
 class Protocol:
     # --------------------------------------
     # Constructor
     # --------------------------------------
-    def __init__(self, host, port, debug) -> None:
+    def __init__(self, host, port, debug = False) -> None:
         self.host = host
         self.port = port
 
@@ -18,8 +17,6 @@ class Protocol:
 
         # tạo socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # đặt timeout
         self.sock.settimeout(TIMEOUT)
 
     # --------------------------------------
@@ -31,7 +28,6 @@ class Protocol:
         """
         if self.sock is None:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(TIMEOUT)
 
         try:
             if self.debug:
